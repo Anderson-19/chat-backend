@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 
 import { UserAuthenticationService } from './user-authentication.service';
-import { CreateUserAuthenticationDto } from './dto/create-user-authentication.dto';
 import { UpdateUserAuthenticationDto } from './dto/update-user-authentication.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -9,11 +8,6 @@ import { RegisterUserDto } from './dto/register-user.dto';
 @Controller('api/auth')
 export class UserAuthenticationController {
   constructor(private readonly userAuthenticationService: UserAuthenticationService) {}
-
-  @Post()
-  create(@Body() createUserAuthenticationDto: CreateUserAuthenticationDto) {
-    return this.userAuthenticationService.create(createUserAuthenticationDto);
-  }
 
   @Post('/login')
   login( @Body() loginDto: LoginUserDto  ) {

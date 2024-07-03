@@ -9,17 +9,18 @@ import * as bcryptjs from 'bcryptjs';
 import { Model } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 
-import { CreateUserAuthenticationDto, LoginUserDto, RegisterUserDto, UpdateUserAuthenticationDto } from './dto';
+import { LoginUserDto, RegisterUserDto, UpdateUserAuthenticationDto } from './dto';
 import { User } from './entities/user-authentication.entity';
 import { JwtPayload, LoginResponse } from './interfaces';
 
 @Injectable()
 export class UserAuthenticationService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>, private jwtService: JwtService,) {}
 
-  async create(createUserAuthenticationDto: CreateUserAuthenticationDto) {
+  constructor(@InjectModel(User.name) private userModel: Model<User>, private jwtService: JwtService) {}
+
+  async register(registerDto: RegisterUserDto): Promise<LoginResponse> {
     try {
-      const { password, ...userData } = createUserAuthenticationDto;
+      const { password, ...userData } = registerDto;
 
       const userExist = await this.userModel.findOne({ email: userData.email });
 
@@ -33,50 +34,39 @@ export class UserAuthenticationService {
       await newUser.save();
       const { password: _, ...user } = newUser.toJSON();
 
-      return user;
-    } catch (error) {
-      if (error.code === 11000) {
-        throw new BadRequestException(
-          `${createUserAuthenticationDto.email} already exists!`,
-        );
-      }
-      throw new InternalServerErrorException('Something terribe happen!!!');
+      return {user};
+    } catch ({ response: _, ...error }) {
+      if (error.status === 401) throw new BadRequestException(error);
+      
+      throw new InternalServerErrorException(error);
     }
-  }
-
-  async register(registerDto: RegisterUserDto): Promise<LoginResponse> {
-    const user = await this.create(registerDto);
-
-    return {
-      user: user,
-    };
   }
 
   async login( loginDto: LoginUserDto ):Promise<LoginResponse> {
-
-    const { email, password } = loginDto;
-
-    const user = await this.userModel.findOne({ email });
-    if ( !user ) {
-      throw new UnauthorizedException('Not valid credentials - email');
-    }
-    
-    if ( !bcryptjs.compareSync( password, user.password ) ) {
-      throw new UnauthorizedException('Not valid credentials - password');
-    }
-
-    const { password:_, ...rest  } = user.toJSON();
-
-    console.log({
-      user: rest,
-      token: this.getJwtToken({ id: user.id })
-    });
+    try {
       
-    return {
-      user: rest,
-      token: this.getJwtToken({ id: user.id }),
-    }
+      const { email, password } = loginDto;
   
+      const user = await this.userModel.findOne({ email });
+      if ( !user ) throw new UnauthorizedException(`${ email } does not exist!`);
+      
+      if ( !bcryptjs.compareSync( password, user.password ) ) {
+        throw new UnauthorizedException(`${ password } does not exist!`);
+      }
+  
+      const { password:_, ...rest  } = user.toJSON();
+
+      return {
+        user: rest,
+        token: this.getJwtToken({ id: user.id }),
+      }
+    
+    } catch ({ response: _, ...error }) {
+      if (error.status === 401) throw new BadRequestException(error);
+      
+      throw new InternalServerErrorException(error);
+    }
+
   }
 
   getJwtToken( payload: JwtPayload ) {
