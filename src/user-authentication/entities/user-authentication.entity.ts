@@ -19,7 +19,13 @@ export class User {
     @Prop({ minlength: 8, required: true })
     password?: string;
 
-    @Prop({ default: true })
+    @Prop({ default: 'https://res.cloudinary.com/dav7kqayl/image/upload/v1703882215/social-network/default-users/wsbtqrhs3537j8v2ptlg.png' })
+    avatar: string;
+
+    @Prop({ default: '' })
+    about: string;
+
+    @Prop({ default: false })
     isActive: boolean;
 
 }
