@@ -12,10 +12,10 @@ import { JwtService } from '@nestjs/jwt';
 import {
   LoginUserDto,
   RegisterUserDto,
-  UpdateUserAuthenticationDto,
 } from './dto';
 import { User } from './entities/user-authentication.entity';
 import { JwtPayload, LoginResponse } from './interfaces';
+import { ResponseGeneric } from './interfaces/response-generic';
 
 @Injectable()
 export class UserAuthenticationService {
@@ -43,18 +43,29 @@ export class UserAuthenticationService {
 
       return { user };
     } catch ({ response: _, ...error }) {
-      if (error.status === 401) throw new BadRequestException(error);
+      
+      if (error.status === 401) throw new BadRequestException({
+        status: 401,
+        error: true,
+        message: error,
+      });
 
-      throw new InternalServerErrorException(error);
+      throw new InternalServerErrorException({
+        status: 500,
+        error: true,
+        message: error,
+      });
     }
   }
 
-  async login(loginDto: LoginUserDto): Promise<LoginResponse> {
+  async login(loginDto: LoginUserDto): Promise<ResponseGeneric> {
     try {
       const { email, password } = loginDto;
 
       const user = await this.userModel.findOne({ email });
       if (!user) throw new UnauthorizedException(`${email} does not exist!`);
+
+      await this.userModel.updateOne({ email }, { isActive: true });
 
       if (!bcryptjs.compareSync(password, user.password)) {
         throw new UnauthorizedException(`${password} does not exist!`);
@@ -63,13 +74,28 @@ export class UserAuthenticationService {
       const { password: _, ...rest } = user.toJSON();
 
       return {
-        user: rest,
-        token: this.getJwtToken({ id: user.id }),
-      };
+        status: 200,
+        error: false,
+        message: '',
+        data: {
+          user: rest,
+          token: this.getJwtToken({ id: user.id }),
+        }
+      }
+ 
     } catch ({ response: _, ...error }) {
-      if (error.status === 401) throw new UnauthorizedException(error);
 
-      throw new InternalServerErrorException(error);
+      if (error.status === 401) throw new BadRequestException({
+        status: 401,
+        error: true,
+        message: error,
+      });
+
+      throw new InternalServerErrorException({
+        status: 500,
+        error: true,
+        message: error,
+      });
     }
   }
 
@@ -78,45 +104,18 @@ export class UserAuthenticationService {
     return token;
   }
 
-  async checkToken(token: string) {
-    const verifyToken: JwtPayload = this.jwtService.verify(token, {
-      secret: process.env.JWT_SEED,
-    });
-
+  async logOut(email: string){
     try {
-      if (!verifyToken)
-        throw new UnauthorizedException(`Token does not exist!`);
-
-      const user = await this.userModel.findOne({ _id: verifyToken.id });
-
-      if (!user)
-        throw new UnauthorizedException(
-          `The User: ${verifyToken.id} does not exist!`,
-        );
-
-      const { password: _, ...rest } = user.toJSON();
-
-      return {
-        user: rest,
-        token,
-      };
+      await this.userModel.updateOne({ email }, { isActive: false });
+      return true;
     } catch (error) {
-      if (error.status === 401) throw new UnauthorizedException(error);
-
       throw new InternalServerErrorException(error);
-
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} userAuthentication`;
+  async findOneById(userId: string) {
+    return await this.userModel.findOne({ _id: userId });
   }
 
-  update(id: number, updateUserAuthenticationDto: UpdateUserAuthenticationDto) {
-    return `This action updates a #${id} userAuthentication`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} userAuthentication`;
-  }
+  
 }
