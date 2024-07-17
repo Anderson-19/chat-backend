@@ -1,12 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 
 import { UserAuthenticationService } from './user-authentication.service';
-import { UpdateUserAuthenticationDto } from './dto/update-user-authentication.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { AuthGuard } from './guards/auth.guard';
+import { LoginResponse } from './interfaces';
+import { User } from './entities/user-authentication.entity';
 
 @Controller('api/auth')
 export class UserAuthenticationController {
+
   constructor(private readonly userAuthenticationService: UserAuthenticationService) {}
 
   @Post('/login')
@@ -19,23 +22,20 @@ export class UserAuthenticationController {
     return this.userAuthenticationService.register( registerDto );
   }
 
-  @Get('getAll')
-  findAll() {
-    return this.userAuthenticationService.findAll();
+  @Get('/logout/:email')
+  logOut( @Param('email') email: string ){
+    return this.userAuthenticationService.logOut(email);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userAuthenticationService.findOne(+id);
+  @UseGuards( AuthGuard )
+  @Get('/checkToken')
+  checkToken( @Request() req: Request ): LoginResponse {
+    const user = req['user'] as User;
+
+    return {
+      user,
+      token: this.userAuthenticationService.getJwtToken({ id: user._id })
+    }
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserAuthenticationDto: UpdateUserAuthenticationDto) {
-    return this.userAuthenticationService.update(+id, updateUserAuthenticationDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userAuthenticationService.remove(+id);
-  }
 }
