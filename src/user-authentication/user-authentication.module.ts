@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module} from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
@@ -22,9 +22,10 @@ import { UserAuthenticationController } from './user-authentication.controller';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SEED,
-      signOptions: { expiresIn: '6h' },
+      signOptions: { expiresIn: '1h' },
     }),
-  ]
+  ],
+  exports: [ UserAuthenticationService ]
 })
 
 export class UserAuthenticationModule {}
